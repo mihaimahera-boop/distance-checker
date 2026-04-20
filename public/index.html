@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Verificare distanță obiective</title>
+
   <style>
     html, body {
       margin: 0;
@@ -15,14 +16,15 @@
 
     #app {
       display: flex;
-      width: 100%;
       height: 100vh;
+      width: 100%;
+      overflow: hidden;
     }
 
     #sidebar {
-      width: 320px;
-      min-width: 320px;
-      background: #fff;
+      width: 340px;
+      min-width: 340px;
+      background: #ffffff;
       border-right: 1px solid #ddd;
       padding: 16px;
       box-sizing: border-box;
@@ -33,19 +35,18 @@
     #map {
       flex: 1;
       height: 100%;
-      min-width: 300px;
-      background: #e5e7eb;
+      min-width: 0;
     }
 
     h1 {
-      margin: 0 0 16px;
+      margin: 0 0 16px 0;
       font-size: 22px;
     }
 
     label {
       display: block;
-      margin: 12px 0 6px;
-      font-size: 14px;
+      margin: 10px 0 4px;
+      font-size: 13px;
       font-weight: 600;
       color: #222;
     }
@@ -53,7 +54,7 @@
     input, select, button {
       width: 100%;
       box-sizing: border-box;
-      padding: 10px 12px;
+      padding: 10px;
       border-radius: 8px;
       border: 1px solid #cfcfcf;
       font-size: 14px;
@@ -68,18 +69,18 @@
     .btn-primary {
       background: #1d4ed8;
       color: white;
-      margin-top: 14px;
+      margin-top: 12px;
     }
 
     .btn-secondary {
       background: #4b5563;
       color: white;
-      margin-top: 10px;
+      margin-top: 8px;
     }
 
     .legend, .result-box {
-      margin-top: 16px;
-      padding: 12px;
+      margin-top: 12px;
+      padding: 10px;
       border-radius: 10px;
       background: #f8fafc;
       border: 1px solid #e5e7eb;
@@ -88,17 +89,15 @@
     .legend-item {
       display: flex;
       align-items: center;
-      gap: 8px;
-      margin: 6px 0;
-      font-size: 14px;
+      gap: 6px;
+      margin: 4px 0;
+      font-size: 12px;
     }
 
     .dot {
-      width: 12px;
-      height: 12px;
+      width: 10px;
+      height: 10px;
       border-radius: 50%;
-      display: inline-block;
-      flex: 0 0 12px;
     }
 
     .orange { background: orange; }
@@ -108,71 +107,62 @@
     .green { background: #16a34a; }
     .yellow { background: #facc15; }
 
-    .status-ok {
-      color: #15803d;
-      font-weight: 700;
-    }
+    .status-ok { color: #15803d; font-weight: 700; }
+    .status-bad { color: #dc2626; font-weight: 700; }
 
-    .status-bad {
-      color: #dc2626;
-      font-weight: 700;
-    }
+    .muted { color: #666; font-size: 12px; }
+    .small { font-size: 12px; line-height: 1.4; }
+    .error { color: #dc2626; font-weight: 700; }
 
-    .muted {
-      color: #666;
-      font-size: 13px;
-    }
+    /* MOBILE */
+    @media (max-width: 768px) {
+      #app {
+        flex-direction: column;
+      }
 
-    .small {
-      font-size: 13px;
-      line-height: 1.45;
-    }
+      #sidebar {
+        width: 100%;
+        min-width: 100%;
+        height: 40vh;
+        border-right: none;
+        border-bottom: 1px solid #ddd;
+        padding: 10px;
+      }
 
-    .error {
-      color: #dc2626;
-      font-weight: 700;
+      #map {
+        height: 60vh;
+      }
     }
   </style>
 </head>
+
 <body>
   <div id="app">
     <div id="sidebar">
-      <h1>Verificare distanță</h1>
+      <h1>Verificare</h1>
 
-      <label for="address">Adresă</label>
-      <input id="address" type="text" placeholder="ex: bulevardul unirii 17 focsani" />
+      <input id="address" placeholder="Adresă..." />
 
-      <label for="category">Categorie</label>
+      <label>Categorie</label>
       <select id="category">
         <option value="ambele">Ambele</option>
         <option value="biserici">Biserici</option>
         <option value="scoli">Școli</option>
       </select>
 
-      <label for="threshold">Prag</label>
+      <label>Prag</label>
       <select id="threshold">
         <option value="100">100 m</option>
         <option value="150" selected>150 m</option>
         <option value="200">200 m</option>
-        <option value="250">250 m</option>
         <option value="300">300 m</option>
-        <option value="500">500 m</option>
       </select>
 
-      <button class="btn-primary" id="checkBtn">Verifică</button>
-      <button class="btn-secondary" id="streetViewBtn">Street View ON / OFF</button>
-
-      <div class="legend">
-        <div class="legend-item"><span class="dot orange"></span> Cel mai apropiat obiectiv</div>
-        <div class="legend-item"><span class="dot red"></span> Biserici sub prag</div>
-        <div class="legend-item"><span class="dot blue"></span> Școli sub prag</div>
-        <div class="legend-item"><span class="dot dark"></span> Peste prag</div>
-        <div class="legend-item"><span class="dot green"></span> Adresă</div>
-        <div class="legend-item"><span class="dot yellow"></span> Rută pietonală</div>
-      </div>
+      <button class="btn-primary" onclick="checkDistance()">Verifică</button>
+      <button class="btn-secondary" onclick="toggleStreetView()">Street</button>
 
       <div class="result-box" id="resultBox">
-        <div class="muted">Rezultatul va apărea aici.</div>
+        <div class="muted">Rezultatul apare aici</div>
       </div>
     </div>
 
@@ -180,136 +170,39 @@
   </div>
 
   <script>
-    let map = null;
-    let panorama = null;
-    let googleMapsApiKey = null;
-
-    let addressMarker = null;
-    let nearestMarker = null;
-    let thresholdCircle = null;
-    let walkingPolyline = null;
-    let extraMarkers = [];
+    let map, panorama;
+    let addressMarker, nearestMarker, walkingPolyline;
 
     async function loadConfig() {
       const res = await fetch("/api/config");
       const data = await res.json();
 
-      if (!data.googleMapsApiKey) {
-        throw new Error("Cheia Google Maps nu a fost găsită în server.");
-      }
+      const script = document.createElement("script");
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${data.googleMapsApiKey}&libraries=geometry`;
+      script.async = true;
+      document.head.appendChild(script);
 
-      googleMapsApiKey = data.googleMapsApiKey;
-    }
-
-    function loadGoogleMapsScript() {
-      return new Promise((resolve, reject) => {
-        if (window.google && window.google.maps) {
-          resolve();
-          return;
-        }
-
-        const existing = document.getElementById("google-maps-script");
-        if (existing) {
-          existing.addEventListener("load", () => resolve());
-          existing.addEventListener("error", () => reject(new Error("Scriptul Google Maps nu s-a încărcat.")));
-          return;
-        }
-
-        const script = document.createElement("script");
-        script.id = "google-maps-script";
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(googleMapsApiKey)}&libraries=geometry`;
-        script.async = true;
-        script.defer = true;
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error("Nu s-a putut încărca Google Maps."));
-        document.head.appendChild(script);
+      return new Promise(resolve => {
+        script.onload = resolve;
       });
     }
 
     function initMap() {
       map = new google.maps.Map(document.getElementById("map"), {
-        center: { lat: 44.4268, lng: 26.1025 },
-        zoom: 13,
-        mapTypeControl: true,
-        streetViewControl: true,
-        fullscreenControl: true,
+        center: { lat: 44.43, lng: 26.10 },
+        zoom: 13
       });
 
       panorama = map.getStreetView();
     }
 
     function clearMap() {
-      if (addressMarker) {
-        addressMarker.setMap(null);
-        addressMarker = null;
-      }
-
-      if (nearestMarker) {
-        nearestMarker.setMap(null);
-        nearestMarker = null;
-      }
-
-      if (thresholdCircle) {
-        thresholdCircle.setMap(null);
-        thresholdCircle = null;
-      }
-
-      if (walkingPolyline) {
-        walkingPolyline.setMap(null);
-        walkingPolyline = null;
-      }
-
-      extraMarkers.forEach((marker) => marker.setMap(null));
-      extraMarkers = [];
+      if (addressMarker) addressMarker.setMap(null);
+      if (nearestMarker) nearestMarker.setMap(null);
+      if (walkingPolyline) walkingPolyline.setMap(null);
     }
 
-    function addColoredMarker(position, title, iconUrl) {
-      return new google.maps.Marker({
-        position,
-        map,
-        title,
-        icon: {
-          url: iconUrl,
-          scaledSize: new google.maps.Size(32, 32),
-        },
-      });
-    }
-
-    function decodePolyline(encoded) {
-      return google.maps.geometry.encoding.decodePath(encoded);
-    }
-
-    function renderResult(data) {
-      const resultBox = document.getElementById("resultBox");
-
-      if (!data || !data.origin) {
-        resultBox.innerHTML = `<div class="error">Nu am primit date valide de la server.</div>`;
-        return;
-      }
-
-      const verdictClass = data.verdict === "SUB prag" ? "status-bad" : "status-ok";
-
-      resultBox.innerHTML = `
-        <div><strong>Verdict:</strong> <span class="${verdictClass}">${data.verdict}</span></div>
-        <br>
-        <div class="small"><strong>Adresă geocodată:</strong><br>${data.origin.formattedAddress || "-"}</div>
-        <br>
-        ${
-          data.nearest
-            ? `
-              <div class="small"><strong>Cel mai apropiat obiectiv:</strong><br>${data.nearest.name}</div>
-              <div class="small"><strong>Categorie:</strong> ${data.nearest.type}</div>
-              <div class="small"><strong>Sursă:</strong> ${data.nearest.source || "local"}</div>
-              <div class="small"><strong>Distanță în linie dreaptă:</strong> ${Math.round(data.nearest.distanceMeters)} m</div>
-              <div class="small"><strong>Distanță pietonală:</strong> ${data.walking?.distanceText || "N/A"}</div>
-              <div class="small"><strong>Timp pietonal:</strong> ${data.walking?.durationText || "N/A"}</div>
-            `
-            : `<div class="small">Nu am găsit obiective relevante.</div>`
-        }
-      `;
-    }
-
-    function renderMap(data) {
+    function render(data) {
       clearMap();
 
       const origin = { lat: data.origin.lat, lng: data.origin.lng };
@@ -317,140 +210,74 @@
       map.setCenter(origin);
       map.setZoom(17);
 
-      addressMarker = addColoredMarker(
-        origin,
-        "Adresă",
-        "https://maps.google.com/mapfiles/ms/icons/green-dot.png"
-      );
-
-      thresholdCircle = new google.maps.Circle({
+      addressMarker = new google.maps.Marker({
+        position: origin,
         map,
-        center: origin,
-        radius: Number(data.threshold),
-        strokeColor: "#1f2937",
-        strokeOpacity: 0.8,
-        strokeWeight: 2,
-        fillColor: "#93c5fd",
-        fillOpacity: 0.25,
+        icon: "http://maps.google.com/mapfiles/ms/icons/green-dot.png"
       });
 
       if (data.nearest) {
-        nearestMarker = addColoredMarker(
-          { lat: data.nearest.lat, lng: data.nearest.lon },
-          data.nearest.name,
-          "https://maps.google.com/mapfiles/ms/icons/orange-dot.png"
-        );
-      }
-
-      if (Array.isArray(data.pointsUnderThreshold)) {
-        data.pointsUnderThreshold.forEach((p) => {
-          if (
-            data.nearest &&
-            p.name === data.nearest.name &&
-            p.lat === data.nearest.lat &&
-            p.lon === data.nearest.lon
-          ) {
-            return;
-          }
-
-          let color = "https://maps.google.com/mapfiles/ms/icons/red-dot.png";
-          if (p.type === "invatamant") {
-            color = "https://maps.google.com/mapfiles/ms/icons/blue-dot.png";
-          }
-
-          const marker = addColoredMarker(
-            { lat: p.lat, lng: p.lon },
-            p.name,
-            color
-          );
-
-          extraMarkers.push(marker);
+        nearestMarker = new google.maps.Marker({
+          position: { lat: data.nearest.lat, lng: data.nearest.lon },
+          map,
+          icon: "http://maps.google.com/mapfiles/ms/icons/orange-dot.png"
         });
       }
 
       if (data.walking && data.walking.polyline) {
-        const path = decodePolyline(data.walking.polyline);
+        const path = google.maps.geometry.encoding.decodePath(data.walking.polyline);
 
         walkingPolyline = new google.maps.Polyline({
           path,
-          geodesic: true,
-          strokeColor: "#facc15",
-          strokeOpacity: 1,
-          strokeWeight: 5,
           map,
+          strokeColor: "#facc15",
+          strokeWeight: 5
         });
       }
+
+      document.getElementById("resultBox").innerHTML = `
+        <div><b>${data.verdict}</b></div>
+        ${data.nearest ? `
+          <div class="small">${data.nearest.name}</div>
+          <div class="small">Direct: ${Math.round(data.nearest.distanceMeters)} m</div>
+          <div class="small">Pietonal: ${data.walking?.distanceText || "-"}</div>
+        ` : "Nu există"}
+      `;
     }
 
     async function checkDistance() {
-      const address = document.getElementById("address").value.trim();
+      const address = document.getElementById("address").value;
       const category = document.getElementById("category").value;
-      const threshold = Number(document.getElementById("threshold").value);
-      const resultBox = document.getElementById("resultBox");
+      const threshold = document.getElementById("threshold").value;
 
-      if (!address) {
-        resultBox.innerHTML = `<div class="error">Adresa este obligatorie.</div>`;
-        return;
-      }
+      const res = await fetch("/api/check-distance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address, category, threshold })
+      });
 
-      resultBox.innerHTML = `<div class="muted">Se caută...</div>`;
-
-      try {
-        const response = await fetch("/api/check-distance", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            address,
-            category,
-            threshold,
-          }),
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || "Eroare necunoscută.");
-        }
-
-        renderResult(data);
-        renderMap(data);
-      } catch (err) {
-        resultBox.innerHTML = `<div class="error">Eroare: ${err.message}</div>`;
-      }
+      const data = await res.json();
+      render(data);
     }
 
     function toggleStreetView() {
-      if (!map || !panorama || !addressMarker) return;
+      if (!addressMarker) return;
 
       const visible = panorama.getVisible();
-
       if (visible) {
         panorama.setVisible(false);
-        return;
-      }
-
-      const position = addressMarker.getPosition();
-      panorama.setPosition(position);
-      panorama.setPov({ heading: 0, pitch: 0 });
-      panorama.setVisible(true);
-    }
-
-    async function bootstrap() {
-      try {
-        await loadConfig();
-        await loadGoogleMapsScript();
-        initMap();
-
-        document.getElementById("checkBtn").addEventListener("click", checkDistance);
-        document.getElementById("streetViewBtn").addEventListener("click", toggleStreetView);
-      } catch (e) {
-        document.getElementById("resultBox").innerHTML = `<div class="error">${e.message}</div>`;
+      } else {
+        panorama.setPosition(addressMarker.getPosition());
+        panorama.setVisible(true);
       }
     }
 
-    bootstrap();
+    async function start() {
+      await loadConfig();
+      initMap();
+    }
+
+    start();
   </script>
 </body>
 </html>
