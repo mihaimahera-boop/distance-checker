@@ -41,124 +41,40 @@ function haversine(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function normalizeText(s) {
-  return String(s || "")
+function normalizeText(str) {
+  return String(str || "")
+    .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .trim()
-    .toLowerCase();
+    .trim();
 }
 
-function isExcludedEducationalName(name) {
-  const t = normalizeText(name);
-
-  // 🔥 BLOCĂM ORICE conține astea (FOARTE IMPORTANT)
-  const blocked = [
-    "after school",
-    "afterschool",
-    "before school",
-    "driving school",
-    "scoala de soferi",
-    "școala de șoferi",
-    "auto school",
-    "curs",
-    "cursuri",
-    "training",
-    "academy",
-    "academie",
-    "coaching",
-    "workshop",
-    "meditatii",
-    "meditații",
-    "pregatire",
-    "pregătire",
-    "learning center",
-    "educational center",
-    "centru educational",
-    "centru educațional"
-  ];
-
-  if (blocked.some(x => t.includes(normalizeText(x)))) {
-    return true;
-  }
-
-  // ✅ DOAR astea sunt acceptate ca educație reală
-  const allowed = [
-    "gradinita",
-    "grădini",
-    "kindergarten",
-    "liceu",
-    "scoala gimnaziala",
-    "școala gimnazială",
-    "colegiu",
-    "colegiul",
-    "universitate",
-    "universitatea",
-    "school",
-    "high school",
-    "college",
-    "university"
-  ];
-
-  // dacă NU e în allowed → îl excludem
-  return !allowed.some(x => t.includes(normalizeText(x)));
-}
-
-function normalizePoiType(type, name = "") {
+function normalizePoiType(type) {
   const t = normalizeText(type);
-  const n = normalizeText(name);
 
   if (
-    t.includes("invatamant") ||
-    t.includes("educatie") ||
-    t.includes("education") ||
-    t.includes("scoala") ||
-    t.includes("școala") ||
-    t.includes("gradinita") ||
-    t.includes("grădini") ||
-    t.includes("liceu") ||
-    t.includes("school") ||
-    t.includes("kindergarten") ||
-    t.includes("college") ||
-    t.includes("university")
+    t === "invatamant" ||
+    t === "educatie" ||
+    t === "education" ||
+    t === "school" ||
+    t === "scoala" ||
+    t === "școala" ||
+    t === "gradinita" ||
+    t === "grădiniță" ||
+    t === "liceu" ||
+    t === "kindergarten"
   ) {
     return "invatamant";
   }
 
   if (
-    n.includes("gradinita") ||
-    n.includes("grădini") ||
-    n.includes("kindergarten") ||
-    n.includes("liceu") ||
-    n.includes("school") ||
-    n.includes("college") ||
-    n.includes("universitate") ||
-    n.includes("universitatea")
-  ) {
-    return "invatamant";
-  }
-
-  if (
-    t.includes("lacase_cult") ||
-    t.includes("lacas_cult") ||
-    t.includes("religie") ||
-    t.includes("religion") ||
-    t.includes("cult") ||
-    t.includes("biser") ||
-    t.includes("church") ||
-    t.includes("manast") ||
-    t.includes("mănăst") ||
-    t.includes("paroh")
-  ) {
-    return "lacase_cult";
-  }
-
-  if (
-    n.includes("biser") ||
-    n.includes("church") ||
-    n.includes("paroh") ||
-    n.includes("manast") ||
-    n.includes("mănăst")
+    t === "lacase_cult" ||
+    t === "lacas_cult" ||
+    t === "religion" ||
+    t === "cult" ||
+    t === "church" ||
+    t === "biserica" ||
+    t === "biserici"
   ) {
     return "lacase_cult";
   }
@@ -166,25 +82,53 @@ function normalizePoiType(type, name = "") {
   return t;
 }
 
-function dedupePois(points) {
-  const seen = new Set();
-  const result = [];
+function isDrivingSchool(name) {
+  const n = normalizeText(name);
 
-  for (const p of points) {
-    const key = [
-      normalizeText(p.name),
-      normalizePoiType(p.type, p.name),
-      Number(p.lat).toFixed(6),
-      Number(p.lon).toFixed(6),
-    ].join("|");
+  return (
+    n.includes("scoala de soferi") ||
+    n.includes("școala de șoferi") ||
+    n.includes("driving school") ||
+    n.includes("auto school") ||
+    n.includes("instructor auto") ||
+    n.includes("scoala auto") ||
+    n.includes("școala auto")
+  );
+}
 
-    if (!seen.has(key)) {
-      seen.add(key);
-      result.push(p);
-    }
+function detectTypeFromName(name) {
+  const n = normalizeText(name);
+
+  if (
+    n.includes("biser") ||
+    n.includes("church") ||
+    n.includes("paroh") ||
+    n.includes("manast") ||
+    n.includes("mănăst") ||
+    n.includes("catedr") ||
+    n.includes("cathedral") ||
+    n.includes("moschee") ||
+    n.includes("mosque")
+  ) {
+    return "lacase_cult";
   }
 
-  return result;
+  if (
+    n.includes("gradinita") ||
+    n.includes("grădiniț") ||
+    n.includes("scoala") ||
+    n.includes("școal") ||
+    n.includes("liceu") ||
+    n.includes("school") ||
+    n.includes("kindergarten") ||
+    n.includes("college") ||
+    n.includes("seminar") ||
+    n.includes("after school")
+  ) {
+    return "invatamant";
+  }
+
+  return null;
 }
 
 async function geocodeAddress(address) {
@@ -216,27 +160,6 @@ async function geocodeAddress(address) {
   };
 }
 
-async function reverseGeocode(lat, lng) {
-  if (!GOOGLE_MAPS_API_KEY) return null;
-
-  try {
-    const url =
-      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}` +
-      `&key=${GOOGLE_MAPS_API_KEY}`;
-
-    const response = await fetch(url);
-    const data = await response.json();
-
-    if (data.status !== "OK" || !data.results || !data.results.length) {
-      return null;
-    }
-
-    return data.results[0].formatted_address || null;
-  } catch {
-    return null;
-  }
-}
-
 async function getWalkingRoute(origin, destination) {
   if (!GOOGLE_MAPS_API_KEY) return null;
 
@@ -246,14 +169,17 @@ async function getWalkingRoute(origin, destination) {
       `&destination=${destination.lat},${destination.lng}` +
       `&mode=walking&key=${GOOGLE_MAPS_API_KEY}`;
 
+    console.log(
+      `Directions request: ${origin.lat},${origin.lng} -> ${destination.lat},${destination.lng}`
+    );
+
     const response = await fetch(url);
     const data = await response.json();
 
+    console.log("Directions status:", data.status);
+
     if (data.status !== "OK" || !data.routes || !data.routes.length) {
-      console.log("Directions status:", data.status);
-      if (data.error_message) {
-        console.log("Directions error:", data.error_message);
-      }
+      console.log("Directions error details:", data.error_message || data.status);
       return null;
     }
 
@@ -269,184 +195,168 @@ async function getWalkingRoute(origin, destination) {
       polyline: route.overview_polyline?.points ?? null,
     };
   } catch (err) {
-    console.log("Eroare Directions:", err.message);
+    console.log("Eroare la ruta pietonală:", err.message);
     return null;
   }
 }
 
-async function searchNearbyOnline(origin, category, radius = 1200) {
-  if (!GOOGLE_MAPS_API_KEY) return [];
-
-  let keyword = "";
-  if (category === "biserici") keyword = "church";
-  else if (category === "scoli") keyword = "school kindergarten";
-  else keyword = "church school kindergarten";
-
+async function fetchNearbyByKeyword(lat, lng, keyword, radius) {
   try {
     const url =
-      `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${origin.lat},${origin.lng}` +
-      `&radius=${radius}&keyword=${encodeURIComponent(keyword)}&key=${GOOGLE_MAPS_API_KEY}`;
+      `https://maps.googleapis.com/maps/api/place/nearbysearch/json` +
+      `?location=${lat},${lng}` +
+      `&radius=${radius}` +
+      `&keyword=${encodeURIComponent(keyword)}` +
+      `&key=${GOOGLE_MAPS_API_KEY}`;
 
     const response = await fetch(url);
     const data = await response.json();
 
     if (data.status !== "OK" && data.status !== "ZERO_RESULTS") {
-      console.log("Places status:", data.status);
-      if (data.error_message) {
-        console.log("Places error:", data.error_message);
-      }
-      return [];
+      console.log(`NearbySearch [${keyword}] status:`, data.status, data.error_message || "");
     }
 
-    const results = data.results || [];
+    if (!Array.isArray(data.results)) return [];
 
-    return results
-      .map((p) => {
-        const name = p.name || "Obiectiv online";
-        const text = normalizeText(name);
-
-        let type = "";
-
-        if (
-          text.includes("biser") ||
-          text.includes("church") ||
-          text.includes("paroh") ||
-          text.includes("manast") ||
-          text.includes("mănăst")
-        ) {
-          type = "lacase_cult";
-        } else if (
-          text.includes("scoal") ||
-          text.includes("școal") ||
-          text.includes("gradinita") ||
-          text.includes("grădini") ||
-          text.includes("kindergarten") ||
-          text.includes("lice") ||
-          text.includes("school") ||
-          text.includes("college") ||
-          text.includes("university")
-        ) {
-          type = "invatamant";
-        } else {
-          if (category === "biserici") type = "lacase_cult";
-          else if (category === "scoli") type = "invatamant";
-          else type = normalizePoiType("", name);
-        }
-
-        return {
-          name,
-          type,
-          lat: Number(p.geometry?.location?.lat),
-          lon: Number(p.geometry?.location?.lng),
-          source: "online",
-        };
-      })
-      .filter((p) => {
-        if (!Number.isFinite(p.lat) || !Number.isFinite(p.lon)) {
-          return false;
-        }
-
-        if (category === "biserici" && p.type !== "lacase_cult") {
-          return false;
-        }
-
-        if (category === "scoli" && p.type !== "invatamant") {
-          return false;
-        }
-
-        if (
-          p.type === "invatamant" &&
-          isExcludedEducationalName(p.name)
-        ) {
-          return false;
-        }
-
-        return p.type === "lacase_cult" || p.type === "invatamant";
-      });
+    return data.results;
   } catch (err) {
-    console.log("Eroare Places:", err.message);
+    console.log(`Eroare NearbySearch [${keyword}]:`, err.message);
     return [];
   }
 }
 
-function getFilteredLocalPoi(category) {
-  let filtered = localPoiData.map((p) => ({
+async function fetchOnlinePois(lat, lng, category, radius = 300) {
+  if (!GOOGLE_MAPS_API_KEY) return [];
+
+  const keywords = [];
+
+  if (category === "biserici" || category === "ambele") {
+    keywords.push("biserica");
+    keywords.push("church");
+    keywords.push("parohie");
+    keywords.push("manastire");
+    keywords.push("catedrala");
+  }
+
+  if (category === "scoli" || category === "ambele") {
+    keywords.push("gradinita");
+    keywords.push("grădiniță");
+    keywords.push("scoala");
+    keywords.push("școală");
+    keywords.push("liceu");
+    keywords.push("school");
+    keywords.push("kindergarten");
+    keywords.push("after school");
+  }
+
+  const results = [];
+
+  for (const keyword of keywords) {
+    const places = await fetchNearbyByKeyword(lat, lng, keyword, radius);
+
+    for (const place of places) {
+      const pLat = place.geometry?.location?.lat;
+      const pLng = place.geometry?.location?.lng;
+      const name = place.name || "";
+      const vicinity = place.vicinity || "";
+
+      if (!Number.isFinite(pLat) || !Number.isFinite(pLng) || !name) continue;
+
+      let type = detectTypeFromName(name);
+
+      if (!type) {
+        type = detectTypeFromName(vicinity);
+      }
+
+      if (!type) continue;
+
+      results.push({
+        name,
+        type,
+        lat: pLat,
+        lon: pLng,
+        source: "online",
+        placeId: place.place_id || null,
+        vicinity,
+      });
+    }
+  }
+
+  const dedup = new Map();
+
+  for (const item of results) {
+    const key = `${normalizeText(item.name)}_${item.lat.toFixed(6)}_${item.lon.toFixed(6)}`;
+    if (!dedup.has(key)) {
+      dedup.set(key, item);
+    }
+  }
+
+  return [...dedup.values()];
+}
+
+function prepareLocalPois(category) {
+  let arr = localPoiData.map((p) => ({
     ...p,
-    type: normalizePoiType(p.type, p.name),
+    type: normalizePoiType(p.type),
     lat: Number(p.lat),
     lon: Number(p.lon),
     name: p.name || "Obiectiv fără nume",
-    source: p.source || "local",
+    source: p.source || "csv",
   }));
 
-  filtered = filtered.filter(
-    (p) => Number.isFinite(p.lat) && Number.isFinite(p.lon) && p.name
+  arr = arr.filter(
+    (p) =>
+      p.name &&
+      p.type &&
+      Number.isFinite(p.lat) &&
+      Number.isFinite(p.lon)
   );
 
   if (category === "biserici") {
-    filtered = filtered.filter((p) => p.type === "lacase_cult");
+    arr = arr.filter((p) => p.type === "lacase_cult");
   } else if (category === "scoli") {
-    filtered = filtered.filter((p) => p.type === "invatamant");
-  } else {
-    filtered = filtered.filter(
-      (p) => p.type === "lacase_cult" || p.type === "invatamant"
-    );
+    arr = arr.filter((p) => p.type === "invatamant");
   }
 
-  filtered = filtered.filter((p) => {
-    const isRelevantType =
-      p.type === "lacase_cult" || p.type === "invatamant";
-
-    if (!isRelevantType) return false;
-
-    if (p.type === "invatamant" && isExcludedEducationalName(p.name)) {
-      return false;
-    }
-
+  arr = arr.filter((p) => {
+    if (p.type === "invatamant" && isDrivingSchool(p.name)) return false;
     return true;
   });
 
-  return filtered;
+  return arr;
 }
 
-async function analyzePoint({ origin, category, threshold, formattedAddress }) {
-  const localPoints = getFilteredLocalPoi(category);
-  const onlinePoints = await searchNearbyOnline(origin, category, 1200);
+function mergePois(localPois, onlinePois, category) {
+  let merged = [...localPois, ...onlinePois];
 
-  let allPoints = [...localPoints, ...onlinePoints];
-  allPoints = dedupePois(allPoints);
-
-  const enriched = allPoints.map((p) => ({
-    ...p,
-    distanceMeters: haversine(origin.lat, origin.lng, p.lat, p.lon),
-  }));
-
-  enriched.sort((a, b) => a.distanceMeters - b.distanceMeters);
-
-  const nearest = enriched.length ? enriched[0] : null;
-  const pointsUnderThreshold = enriched.filter((p) => p.distanceMeters <= threshold);
-
-  let walking = null;
-  if (nearest) {
-    walking = await getWalkingRoute(
-      { lat: origin.lat, lng: origin.lng },
-      { lat: nearest.lat, lng: nearest.lon }
-    );
+  if (category === "biserici") {
+    merged = merged.filter((p) => p.type === "lacase_cult");
+  } else if (category === "scoli") {
+    merged = merged.filter((p) => p.type === "invatamant");
   }
 
-  return {
-    origin: {
-      lat: origin.lat,
-      lng: origin.lng,
-      formattedAddress: formattedAddress || `${origin.lat}, ${origin.lng}`,
-    },
-    threshold,
-    nearest,
-    pointsUnderThreshold,
-    walking,
-    verdict: nearest && nearest.distanceMeters < threshold ? "SUB prag" : "OK",
-    hasGoogleKey: !!GOOGLE_MAPS_API_KEY,
-  };
+  merged = merged.filter((p) => {
+    if (p.type === "invatamant" && isDrivingSchool(p.name)) return false;
+    return true;
+  });
+
+  const dedup = new Map();
+
+  for (const item of merged) {
+    const key = `${normalizeText(item.name)}_${item.lat.toFixed(6)}_${item.lon.toFixed(6)}`;
+
+    if (!dedup.has(key)) {
+      dedup.set(key, item);
+    } else {
+      const existing = dedup.get(key);
+
+      if (existing.source !== "csv" && item.source === "csv") {
+        dedup.set(key, item);
+      }
+    }
+  }
+
+  return [...dedup.values()];
 }
 
 app.get("/api/health", (req, res) => {
@@ -465,7 +375,7 @@ app.get("/api/config", (req, res) => {
 
 app.post("/api/check-distance", async (req, res) => {
   try {
-    const { address, category, threshold } = req.body;
+    const { address, category, threshold, manualLat, manualLng } = req.body;
 
     if (!address || !String(address).trim()) {
       return res.status(400).json({
@@ -474,56 +384,61 @@ app.post("/api/check-distance", async (req, res) => {
     }
 
     const selectedThreshold = Number(threshold || 150);
-    const selectedCategory = String(category || "ambele");
 
-    const origin = await geocodeAddress(String(address).trim());
+    let origin = await geocodeAddress(String(address).trim());
 
-    const result = await analyzePoint({
-      origin: { lat: origin.lat, lng: origin.lng },
-      category: selectedCategory,
+    if (Number.isFinite(Number(manualLat)) && Number.isFinite(Number(manualLng))) {
+      origin = {
+        ...origin,
+        lat: Number(manualLat),
+        lng: Number(manualLng),
+      };
+    }
+
+    const localPois = prepareLocalPois(category);
+
+    const onlinePois = await fetchOnlinePois(
+      origin.lat,
+      origin.lng,
+      category,
+      Math.max(selectedThreshold, 300)
+    );
+
+    let filtered = mergePois(localPois, onlinePois, category);
+
+    const enriched = filtered.map((p) => ({
+      ...p,
+      distanceMeters: haversine(origin.lat, origin.lng, p.lat, p.lon),
+    }));
+
+    enriched.sort((a, b) => a.distanceMeters - b.distanceMeters);
+
+    const nearest = enriched.length ? enriched[0] : null;
+    const pointsUnderThreshold = enriched.filter(
+      (p) => p.distanceMeters <= selectedThreshold
+    );
+
+    let walking = null;
+    if (nearest) {
+      walking = await getWalkingRoute(
+        { lat: origin.lat, lng: origin.lng },
+        { lat: nearest.lat, lng: nearest.lon }
+      );
+    }
+
+    return res.json({
+      origin,
       threshold: selectedThreshold,
-      formattedAddress: origin.formattedAddress,
+      nearest,
+      pointsUnderThreshold,
+      walking,
+      verdict:
+        nearest && nearest.distanceMeters < selectedThreshold ? "SUB prag" : "OK",
+      hasGoogleKey: !!GOOGLE_MAPS_API_KEY,
     });
-
-    return res.json(result);
   } catch (err) {
     return res.status(500).json({
       error: err.message || "Eroare internă la verificarea distanței.",
-    });
-  }
-});
-
-app.post("/api/check-distance-by-coords", async (req, res) => {
-  try {
-    const { lat, lng, category, threshold } = req.body;
-
-    if (!Number.isFinite(Number(lat)) || !Number.isFinite(Number(lng))) {
-      return res.status(400).json({
-        error: "Coordonatele sunt invalide.",
-      });
-    }
-
-    const selectedThreshold = Number(threshold || 150);
-    const selectedCategory = String(category || "ambele");
-
-    const origin = {
-      lat: Number(lat),
-      lng: Number(lng),
-    };
-
-    const formattedAddress = await reverseGeocode(origin.lat, origin.lng);
-
-    const result = await analyzePoint({
-      origin,
-      category: selectedCategory,
-      threshold: selectedThreshold,
-      formattedAddress,
-    });
-
-    return res.json(result);
-  } catch (err) {
-    return res.status(500).json({
-      error: err.message || "Eroare internă la verificarea după coordonate.",
     });
   }
 });
