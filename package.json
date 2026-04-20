@@ -1,14 +1,25 @@
 {
   "name": "distance-checker",
   "version": "1.0.0",
-  "description": "Tool verificare distanta fata de obiective",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "cors": "^2.8.5",
-    "dotenv": "^17.4.1",
-    "express": "^4.21.2"
-  }
+    "dotenv": "^16.6.1",
+    "express": "^4.22.1"
+  },
+  "description": "",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mihaimahera-boop/distance-checker.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/mihaimahera-boop/distance-checker/issues"
+  },
+  "homepage": "https://github.com/mihaimahera-boop/distance-checker#readme"
 }

@@ -3,858 +3,454 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Distance Tool - Hybrid Fast + OSM</title>
+  <title>Verificare distanță obiective</title>
   <style>
     html, body {
       margin: 0;
       padding: 0;
-      width: 100%;
       height: 100%;
       font-family: Arial, sans-serif;
+      background: #f3f4f6;
+    }
+
+    #app {
+      display: flex;
+      width: 100%;
+      height: 100vh;
+    }
+
+    #sidebar {
+      width: 320px;
+      min-width: 320px;
+      background: #fff;
+      border-right: 1px solid #ddd;
+      padding: 16px;
+      box-sizing: border-box;
+      overflow-y: auto;
+      z-index: 2;
     }
 
     #map {
-      width: 100%;
+      flex: 1;
       height: 100%;
+      min-width: 300px;
+      background: #e5e7eb;
     }
 
-    #panel {
-      position: absolute;
-      top: 12px;
-      left: 12px;
-      width: 420px;
-      max-width: calc(100% - 24px);
-      background: rgba(255,255,255,0.96);
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-      z-index: 10;
-      padding: 12px;
-      box-sizing: border-box;
-      max-height: calc(100vh - 24px);
-      overflow: auto;
+    h1 {
+      margin: 0 0 16px;
+      font-size: 22px;
     }
 
-    #panel label {
+    label {
       display: block;
-      font-weight: bold;
-      margin-bottom: 4px;
-      margin-top: 8px;
+      margin: 12px 0 6px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #222;
     }
 
-    #panel input,
-    #panel select,
-    #panel button {
+    input, select, button {
       width: 100%;
       box-sizing: border-box;
-      padding: 10px;
-      margin-bottom: 8px;
-      font-size: 15px;
-    }
-
-    #panel button {
-      cursor: pointer;
-    }
-
-    #result {
-      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #cfcfcf;
       font-size: 14px;
-      line-height: 1.4;
-      white-space: normal;
-      word-break: break-word;
     }
 
-    .legend {
+    button {
+      cursor: pointer;
+      border: none;
+      font-weight: 700;
+    }
+
+    .btn-primary {
+      background: #1d4ed8;
+      color: white;
+      margin-top: 14px;
+    }
+
+    .btn-secondary {
+      background: #4b5563;
+      color: white;
       margin-top: 10px;
-      font-size: 13px;
-      line-height: 1.5;
+    }
+
+    .legend, .result-box {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 10px;
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
     }
 
     .legend-item {
       display: flex;
       align-items: center;
       gap: 8px;
-      margin-bottom: 4px;
+      margin: 6px 0;
+      font-size: 14px;
     }
 
     .dot {
-      width: 10px;
-      height: 10px;
+      width: 12px;
+      height: 12px;
       border-radius: 50%;
       display: inline-block;
-      flex: 0 0 10px;
+      flex: 0 0 12px;
     }
 
-    .red { background: #d93025; }
-    .blue { background: #1a73e8; }
-    .green { background: #188038; }
-    .gray { background: #666; }
-    .orange { background: #f29900; }
+    .orange { background: orange; }
+    .red { background: red; }
+    .blue { background: #2563eb; }
+    .dark { background: #333; }
+    .green { background: #16a34a; }
+    .yellow { background: #facc15; }
+
+    .status-ok {
+      color: #15803d;
+      font-weight: 700;
+    }
+
+    .status-bad {
+      color: #dc2626;
+      font-weight: 700;
+    }
+
+    .muted {
+      color: #666;
+      font-size: 13px;
+    }
 
     .small {
-      color: #555;
-      font-size: 12px;
+      font-size: 13px;
+      line-height: 1.45;
     }
 
-    .ok {
-      color: #188038;
-      font-weight: bold;
-    }
-
-    .bad {
-      color: #d93025;
-      font-weight: bold;
-    }
-
-    ul.compact {
-      margin: 6px 0 0 18px;
-      padding: 0;
-    }
-
-    ul.compact li {
-      margin-bottom: 4px;
+    .error {
+      color: #dc2626;
+      font-weight: 700;
     }
   </style>
 </head>
 <body>
-  <div id="panel">
-    <label for="address">Adresă</label>
-    <input id="address" type="text" value="Maria Rosetti 36, București" />
+  <div id="app">
+    <div id="sidebar">
+      <h1>Verificare distanță</h1>
 
-    <label for="category">Categorie</label>
-    <select id="category">
-      <option value="ambele">Ambele</option>
-      <option value="lacase_cult">Biserici</option>
-      <option value="unitati_invatamant">Școli</option>
-    </select>
+      <label for="address">Adresă</label>
+      <input id="address" type="text" placeholder="ex: bulevardul unirii 17 focsani" />
 
-    <label for="threshold">Prag</label>
-    <select id="threshold">
-      <option value="150">150 m</option>
-      <option value="200">200 m</option>
-      <option value="250">250 m</option>
-      <option value="300" selected>300 m</option>
-      <option value="500">500 m</option>
-    </select>
+      <label for="category">Categorie</label>
+      <select id="category">
+        <option value="ambele">Ambele</option>
+        <option value="biserici">Biserici</option>
+        <option value="scoli">Școli</option>
+      </select>
 
-    <button id="checkBtn">Verifică</button>
-    <button id="streetBtn" type="button">Street View ON / OFF</button>
+      <label for="threshold">Prag</label>
+      <select id="threshold">
+        <option value="100">100 m</option>
+        <option value="150" selected>150 m</option>
+        <option value="200">200 m</option>
+        <option value="250">250 m</option>
+        <option value="300">300 m</option>
+        <option value="500">500 m</option>
+      </select>
 
-    <div class="legend">
-      <div class="legend-item"><span class="dot red"></span> Biserici sub prag</div>
-      <div class="legend-item"><span class="dot blue"></span> Școli sub prag</div>
-      <div class="legend-item"><span class="dot gray"></span> Peste prag</div>
-      <div class="legend-item"><span class="dot green"></span> Adresă</div>
-      <div class="legend-item"><span class="dot orange"></span> Rută pietonală</div>
+      <button class="btn-primary" id="checkBtn">Verifică</button>
+      <button class="btn-secondary" id="streetViewBtn">Street View ON / OFF</button>
+
+      <div class="legend">
+        <div class="legend-item"><span class="dot orange"></span> Cel mai apropiat obiectiv</div>
+        <div class="legend-item"><span class="dot red"></span> Biserici sub prag</div>
+        <div class="legend-item"><span class="dot blue"></span> Școli sub prag</div>
+        <div class="legend-item"><span class="dot dark"></span> Peste prag</div>
+        <div class="legend-item"><span class="dot green"></span> Adresă</div>
+        <div class="legend-item"><span class="dot yellow"></span> Rută pietonală</div>
+      </div>
+
+      <div class="result-box" id="resultBox">
+        <div class="muted">Rezultatul va apărea aici.</div>
+      </div>
     </div>
 
-    <div id="result">
-      Caută întâi în <b>poi.geojson + poi-extra.geojson</b>, apoi actualizează cu <b>OSM online</b>.
-    </div>
+    <div id="map"></div>
   </div>
 
-  <div id="map"></div>
-
   <script>
-    let map;
-    let geocoder;
-    let streetViewPanorama = null;
-    let isStreetViewVisible = false;
+    let map = null;
+    let panorama = null;
+    let googleMapsApiKey = null;
 
     let addressMarker = null;
-    let circleOverlay = null;
+    let nearestMarker = null;
+    let thresholdCircle = null;
     let walkingPolyline = null;
+    let extraMarkers = [];
 
-    let localPoi = [];
-    let extraPoi = [];
+    async function loadConfig() {
+      const res = await fetch("/api/config");
+      const data = await res.json();
 
-    let poiMarkers = [];
-    let currentSearchId = 0;
-
-    function isValidCoord(lat, lng) {
-      return Number.isFinite(lat) && Number.isFinite(lng) &&
-             lat >= -90 && lat <= 90 &&
-             lng >= -180 && lng <= 180;
-    }
-
-    function normalizeText(v) {
-      return String(v || "")
-        .trim()
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "");
-    }
-
-    function normalizeCategory(value) {
-      const t = normalizeText(value);
-
-      if (
-        t === "lacase_cult" ||
-        t === "lacas_cult" ||
-        t === "biserica" ||
-        t === "biserici" ||
-        t === "church" ||
-        t === "place_of_worship" ||
-        t.includes("cult")
-      ) {
-        return "lacase_cult";
+      if (!data.googleMapsApiKey) {
+        throw new Error("Cheia Google Maps nu a fost găsită în server.");
       }
 
-      if (
-        t === "unitati_invatamant" ||
-        t === "unitate_invatamant" ||
-        t === "scoala" ||
-        t === "scoli" ||
-        t === "school" ||
-        t === "kindergarten" ||
-        t === "college" ||
-        t === "university" ||
-        t.includes("invat")
-      ) {
-        return "unitati_invatamant";
+      googleMapsApiKey = data.googleMapsApiKey;
+    }
+
+    function loadGoogleMapsScript() {
+      return new Promise((resolve, reject) => {
+        if (window.google && window.google.maps) {
+          resolve();
+          return;
+        }
+
+        const existing = document.getElementById("google-maps-script");
+        if (existing) {
+          existing.addEventListener("load", () => resolve());
+          existing.addEventListener("error", () => reject(new Error("Scriptul Google Maps nu s-a încărcat.")));
+          return;
+        }
+
+        const script = document.createElement("script");
+        script.id = "google-maps-script";
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(googleMapsApiKey)}&libraries=geometry`;
+        script.async = true;
+        script.defer = true;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error("Nu s-a putut încărca Google Maps."));
+        document.head.appendChild(script);
+      });
+    }
+
+    function initMap() {
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: { lat: 44.4268, lng: 26.1025 },
+        zoom: 13,
+        mapTypeControl: true,
+        streetViewControl: true,
+        fullscreenControl: true,
+      });
+
+      panorama = map.getStreetView();
+    }
+
+    function clearMap() {
+      if (addressMarker) {
+        addressMarker.setMap(null);
+        addressMarker = null;
       }
 
-      return t;
-    }
-
-    function typeLabel(type) {
-      const t = normalizeCategory(type);
-      if (t === "lacase_cult") return "biserici";
-      if (t === "unitati_invatamant") return "școli";
-      return "necunoscut";
-    }
-
-    function metersToText(m) {
-      if (!Number.isFinite(m)) return "N/A";
-      return `${Math.round(m)} m`;
-    }
-
-    function minutesToText(sec) {
-      if (!Number.isFinite(sec)) return "N/A";
-      return `${Math.round(sec / 60)} min`;
-    }
-
-    function haversineMeters(lat1, lon1, lat2, lon2) {
-      const R = 6371000;
-      const toRad = (deg) => deg * Math.PI / 180;
-
-      const dLat = toRad(lat2 - lat1);
-      const dLon = toRad(lon2 - lon1);
-
-      const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-        Math.sin(dLon / 2) * Math.sin(dLon / 2);
-
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      return R * c;
-    }
-
-    function clearPoiMarkers() {
-      for (const marker of poiMarkers) {
-        marker.setMap(null);
+      if (nearestMarker) {
+        nearestMarker.setMap(null);
+        nearestMarker = null;
       }
-      poiMarkers = [];
-    }
 
-    function clearRoute() {
+      if (thresholdCircle) {
+        thresholdCircle.setMap(null);
+        thresholdCircle = null;
+      }
+
       if (walkingPolyline) {
         walkingPolyline.setMap(null);
         walkingPolyline = null;
       }
+
+      extraMarkers.forEach((marker) => marker.setMap(null));
+      extraMarkers = [];
     }
 
-    function clearCircle() {
-      if (circleOverlay) {
-        circleOverlay.setMap(null);
-        circleOverlay = null;
-      }
-    }
-
-    function dedupePoi(items) {
-      const seen = new Set();
-      const out = [];
-
-      for (const p of items) {
-        const key = [
-          normalizeText(p.name),
-          normalizeCategory(p.type),
-          Number(p.lat).toFixed(6),
-          Number(p.lng).toFixed(6)
-        ].join("|");
-
-        if (!seen.has(key)) {
-          seen.add(key);
-          out.push(p);
-        }
-      }
-
-      return out;
-    }
-
-    function filterByCategory(items, category) {
-      const cat = normalizeCategory(category);
-
-      if (cat === "ambele") return items;
-
-      return items.filter(p => normalizeCategory(p.type) === cat);
-    }
-
-    async function loadGeoJsonFile(url, sourceName) {
-      try {
-        const response = await fetch(url + "?v=" + Date.now());
-        if (!response.ok) return [];
-
-        const data = await response.json();
-        if (!data || !Array.isArray(data.features)) return [];
-
-        return data.features
-          .map((f) => {
-            const coords = f?.geometry?.coordinates;
-            const props = f?.properties || {};
-
-            if (!Array.isArray(coords) || coords.length < 2) return null;
-
-            const lng = Number(coords[0]);
-            const lat = Number(coords[1]);
-
-            if (!isValidCoord(lat, lng)) return null;
-
-            return {
-              name: props.name || "Fără nume",
-              type: normalizeCategory(props.type || props.category || ""),
-              lat,
-              lng,
-              source: sourceName || "Local"
-            };
-          })
-          .filter(Boolean);
-      } catch (e) {
-        return [];
-      }
-    }
-
-    async function loadAllLocalPoi() {
-      localPoi = await loadGeoJsonFile("/poi.geojson", "Local");
-      extraPoi = await loadGeoJsonFile("/poi-extra.geojson", "Local");
-    }
-
-    function getLocalSearchRadius(threshold) {
-      const t = Number(threshold || 300);
-      return Math.max(t * 2, 300);
-    }
-
-    function getLocalPoiByCategory(category, origin = null, threshold = 300) {
-      let all = [];
-
-      if (Array.isArray(localPoi)) {
-        all = all.concat(localPoi);
-      }
-
-      if (Array.isArray(extraPoi)) {
-        all = all.concat(extraPoi);
-      }
-
-      all = filterByCategory(all, category);
-
-      if (!origin) return all;
-
-      const localRadius = getLocalSearchRadius(threshold);
-
-      return all.filter((poi) => {
-        if (!isValidCoord(poi.lat, poi.lng)) return false;
-        const d = haversineMeters(origin.lat, origin.lng, poi.lat, poi.lng);
-        return d <= localRadius;
-      });
-    }
-
-    async function geocodeAddress(address) {
-      return new Promise((resolve, reject) => {
-        geocoder.geocode({ address }, (results, status) => {
-          if (status === "OK" && results && results[0]) {
-            const loc = results[0].geometry.location;
-            resolve({
-              lat: loc.lat(),
-              lng: loc.lng(),
-              formattedAddress: results[0].formatted_address
-            });
-          } else {
-            reject(new Error("Nu am putut geocoda adresa."));
-          }
-        });
-      });
-    }
-
-    async function fetchPoiFromOverpass(lat, lng, category, threshold) {
-      const radius = Math.max(Number(threshold || 300) + 150, 350);
-
-      let parts = [];
-
-      if (category === "ambele" || category === "unitati_invatamant") {
-        parts.push(`
-          node["amenity"="school"](around:${radius},${lat},${lng});
-          way["amenity"="school"](around:${radius},${lat},${lng});
-          relation["amenity"="school"](around:${radius},${lat},${lng});
-
-          node["amenity"="kindergarten"](around:${radius},${lat},${lng});
-          way["amenity"="kindergarten"](around:${radius},${lat},${lng});
-          relation["amenity"="kindergarten"](around:${radius},${lat},${lng});
-
-          node["building"="school"](around:${radius},${lat},${lng});
-          way["building"="school"](around:${radius},${lat},${lng});
-          relation["building"="school"](around:${radius},${lat},${lng});
-        `);
-      }
-
-      if (category === "ambele" || category === "lacase_cult") {
-        parts.push(`
-          node["amenity"="place_of_worship"](around:${radius},${lat},${lng});
-          way["amenity"="place_of_worship"](around:${radius},${lat},${lng});
-          relation["amenity"="place_of_worship"](around:${radius},${lat},${lng});
-
-          node["building"="church"](around:${radius},${lat},${lng});
-          way["building"="church"](around:${radius},${lat},${lng});
-          relation["building"="church"](around:${radius},${lat},${lng});
-
-          node["religion"="christian"](around:${radius},${lat},${lng});
-          way["religion"="christian"](around:${radius},${lat},${lng});
-          relation["religion"="christian"](around:${radius},${lat},${lng});
-        `);
-      }
-
-      const query = `
-        [out:json][timeout:12];
-        (
-          ${parts.join("\n")}
-        );
-        out center tags;
-      `;
-
-      const response = await fetch("https://overpass-api.de/api/interpreter", {
-        method: "POST",
-        body: query,
-        headers: {
-          "Content-Type": "text/plain;charset=UTF-8"
-        }
-      });
-
-      const text = await response.text();
-
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (e) {
-        throw new Error("OSM a răspuns invalid.");
-      }
-
-      if (!data || !Array.isArray(data.elements)) {
-        return [];
-      }
-
-      return data.elements.map((el) => {
-        const elLat = Number(el.lat ?? el.center?.lat);
-        const elLng = Number(el.lon ?? el.center?.lon);
-
-        if (!isValidCoord(elLat, elLng)) return null;
-
-        const tags = el.tags || {};
-
-        let type = "";
-        if (
-          tags.amenity === "school" ||
-          tags.amenity === "kindergarten" ||
-          tags.building === "school"
-        ) {
-          type = "unitati_invatamant";
-        } else if (
-          tags.amenity === "place_of_worship" ||
-          tags.building === "church" ||
-          tags.religion === "christian"
-        ) {
-          type = "lacase_cult";
-        }
-
-        return {
-          name: tags.name || "Obiectiv OSM",
-          type,
-          lat: elLat,
-          lng: elLng,
-          source: "OSM"
-        };
-      }).filter(Boolean);
-    }
-
-    async function getWalkingRoute(origin, destination) {
-      const url = `https://router.project-osrm.org/route/v1/foot/${origin.lng},${origin.lat};${destination.lng},${destination.lat}?overview=full&geometries=geojson`;
-
-      try {
-        const response = await fetch(url);
-        const data = await response.json();
-
-        if (!data.routes || !data.routes[0]) {
-          return null;
-        }
-
-        const route = data.routes[0];
-        const geometry = route.geometry.coordinates.map(([lng, lat]) => ({ lat, lng }));
-
-        return {
-          distance: route.distance,
-          duration: route.duration,
-          geometry
-        };
-      } catch (e) {
-        return null;
-      }
-    }
-
-    function drawAddressMarker(origin) {
-      if (addressMarker) {
-        addressMarker.setMap(null);
-      }
-
-      addressMarker = new google.maps.Marker({
-        position: { lat: origin.lat, lng: origin.lng },
+    function addColoredMarker(position, title, iconUrl) {
+      return new google.maps.Marker({
+        position,
         map,
-        title: "Adresă",
+        title,
         icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 8,
-          fillColor: "#188038",
-          fillOpacity: 1,
-          strokeColor: "#ffffff",
-          strokeWeight: 2
-        }
+          url: iconUrl,
+          scaledSize: new google.maps.Size(32, 32),
+        },
       });
     }
 
-    function drawCircle(origin, threshold) {
-      clearCircle();
-
-      circleOverlay = new google.maps.Circle({
-        strokeColor: "#000000",
-        strokeOpacity: 0.8,
-        strokeWeight: 2,
-        fillColor: "#8ab4f8",
-        fillOpacity: 0.28,
-        map,
-        center: { lat: origin.lat, lng: origin.lng },
-        radius: Number(threshold)
-      });
+    function decodePolyline(encoded) {
+      return google.maps.geometry.encoding.decodePath(encoded);
     }
 
-    function markerColorForPoi(poi, distance, threshold) {
-      const t = normalizeCategory(poi.type);
-      if (distance <= threshold && t === "lacase_cult") return "#d93025";
-      if (distance <= threshold && t === "unitati_invatamant") return "#1a73e8";
-      return "#666666";
-    }
+    function renderResult(data) {
+      const resultBox = document.getElementById("resultBox");
 
-    function addPoiMarkers(origin, items, threshold) {
-      clearPoiMarkers();
-
-      for (const poi of items) {
-        const distance = haversineMeters(origin.lat, origin.lng, poi.lat, poi.lng);
-
-        const marker = new google.maps.Marker({
-          position: { lat: poi.lat, lng: poi.lng },
-          map,
-          title: poi.name,
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 6,
-            fillColor: markerColorForPoi(poi, distance, threshold),
-            fillOpacity: 1,
-            strokeColor: "#ffffff",
-            strokeWeight: 1.5
-          }
-        });
-
-        const infowindow = new google.maps.InfoWindow({
-          content: `
-            <div style="max-width:220px;">
-              <b>${poi.name}</b><br>
-              Categorie: ${typeLabel(poi.type)}<br>
-              Sursă: ${poi.source || "Local"}<br>
-              Distanță linie dreaptă: ${metersToText(distance)}
-            </div>
-          `
-        });
-
-        marker.addListener("click", () => infowindow.open(map, marker));
-        poiMarkers.push(marker);
-      }
-    }
-
-    function drawWalkingRoute(route) {
-      clearRoute();
-
-      if (!route || !Array.isArray(route.geometry) || !route.geometry.length) return;
-
-      walkingPolyline = new google.maps.Polyline({
-        path: route.geometry,
-        geodesic: true,
-        strokeColor: "#f29900",
-        strokeOpacity: 1,
-        strokeWeight: 4,
-        map
-      });
-    }
-
-    function openStreetViewAt(origin) {
-      if (!streetViewPanorama) {
-        streetViewPanorama = map.getStreetView();
-      }
-
-      streetViewPanorama.setPosition({ lat: origin.lat, lng: origin.lng });
-      streetViewPanorama.setPov({ heading: 0, pitch: 0 });
-      streetViewPanorama.setVisible(true);
-      isStreetViewVisible = true;
-    }
-
-    function closeStreetView() {
-      if (streetViewPanorama) {
-        streetViewPanorama.setVisible(false);
-      }
-      isStreetViewVisible = false;
-    }
-
-    function toggleStreetView() {
-      if (!addressMarker) return;
-
-      const pos = addressMarker.getPosition();
-      if (!pos) return;
-
-      const origin = { lat: pos.lat(), lng: pos.lng() };
-
-      if (isStreetViewVisible) {
-        closeStreetView();
-      } else {
-        openStreetViewAt(origin);
-      }
-    }
-
-    function buildResultHtml(data) {
-      const {
-        origin,
-        nearest,
-        threshold,
-        walking,
-        allDistances,
-        sourceLabel
-      } = data;
-
-      const underThreshold = allDistances.filter(x => x.distance <= threshold);
-      const verdictClass = nearest && nearest.distance <= threshold ? "bad" : "ok";
-      const verdictText = nearest && nearest.distance <= threshold ? "SUB prag" : "OK";
-
-      let html = `
-        <div class="${verdictClass}">Verdict: ${verdictText}</div>
-        <br>
-        <b>Adresă:</b><br>
-        ${origin.formattedAddress || "N/A"}<br><br>
-      `;
-
-      if (nearest) {
-        html += `
-          <b>Cel mai apropiat:</b><br>
-          ${nearest.name}<br>
-          Categorie: ${typeLabel(nearest.type)}<br>
-          Sursă: ${sourceLabel}<br>
-          Distanță în linie dreaptă: ${metersToText(nearest.distance)}<br>
-          Distanță pietonală: ${walking ? metersToText(walking.distance) : "N/A"}<br>
-          Timp pietonal: ${walking ? minutesToText(walking.duration) : "N/A"}<br><br>
-        `;
-      } else {
-        html += `<b>Nu am găsit obiective în raza analizată.</b><br><br>`;
-      }
-
-      html += `
-        <b>Obiective sub prag:</b> ${underThreshold.length}<br>
-        <b>Total obiective găsite:</b> ${allDistances.length}<br><br>
-      `;
-
-      if (allDistances.length) {
-        html += `<b>Primele 5:</b><ul class="compact">`;
-        allDistances.slice(0, 5).forEach((p) => {
-          const status = p.distance <= threshold ? "sub prag" : "peste prag";
-          html += `<li>${p.name} — ${metersToText(p.distance)} — ${typeLabel(p.type)} — ${p.source || "Local"} — ${status}</li>`;
-        });
-        html += `</ul>`;
-      }
-
-      return html;
-    }
-
-    function renderSearchResult(origin, poiList, threshold, sourceLabel) {
-      const resBox = document.getElementById("result");
-
-      if (!Array.isArray(poiList) || !poiList.length) {
-        resBox.innerHTML = `Nu am găsit obiective în ${sourceLabel}.`;
-        clearPoiMarkers();
-        clearRoute();
-        return null;
-      }
-
-      const allDistances = poiList
-        .map((poi) => ({
-          ...poi,
-          distance: haversineMeters(origin.lat, origin.lng, poi.lat, poi.lng)
-        }))
-        .sort((a, b) => a.distance - b.distance);
-
-      const nearest = allDistances[0];
-
-      addPoiMarkers(origin, allDistances, threshold);
-
-      return {
-        nearest,
-        allDistances
-      };
-    }
-
-    async function go() {
-      const searchId = ++currentSearchId;
-
-      const address = document.getElementById("address").value.trim();
-      const category = document.getElementById("category").value;
-      const threshold = Number(document.getElementById("threshold").value);
-      const resBox = document.getElementById("result");
-
-      if (!address) {
-        resBox.innerHTML = `<span class="bad">Introdu o adresă.</span>`;
+      if (!data || !data.origin) {
+        resultBox.innerHTML = `<div class="error">Nu am primit date valide de la server.</div>`;
         return;
       }
 
-      resBox.innerHTML = `Se caută adresa...`;
+      const verdictClass = data.verdict === "SUB prag" ? "status-bad" : "status-ok";
 
-      clearPoiMarkers();
-      clearRoute();
-      clearCircle();
-      closeStreetView();
-
-      try {
-        const origin = await geocodeAddress(address);
-        if (searchId !== currentSearchId) return;
-
-        map.setCenter({ lat: origin.lat, lng: origin.lng });
-        map.setZoom(17);
-
-        drawAddressMarker(origin);
-        drawCircle(origin, threshold);
-
-        const localOnly = getLocalPoiByCategory(category, origin, threshold);
-
-        const localRendered = renderSearchResult(origin, localOnly, threshold, "Local");
-        let nearestLocal = localRendered?.nearest || null;
-        let localDistances = localRendered?.allDistances || [];
-
-        let walkingLocal = null;
-        if (nearestLocal) {
-          walkingLocal = await getWalkingRoute(
-            { lat: origin.lat, lng: origin.lng },
-            { lat: nearestLocal.lat, lng: nearestLocal.lng }
-          );
+      resultBox.innerHTML = `
+        <div><strong>Verdict:</strong> <span class="${verdictClass}">${data.verdict}</span></div>
+        <br>
+        <div class="small"><strong>Adresă geocodată:</strong><br>${data.origin.formattedAddress || "-"}</div>
+        <br>
+        ${
+          data.nearest
+            ? `
+              <div class="small"><strong>Cel mai apropiat obiectiv:</strong><br>${data.nearest.name}</div>
+              <div class="small"><strong>Categorie:</strong> ${data.nearest.type}</div>
+              <div class="small"><strong>Sursă:</strong> ${data.nearest.source || "local"}</div>
+              <div class="small"><strong>Distanță în linie dreaptă:</strong> ${Math.round(data.nearest.distanceMeters)} m</div>
+              <div class="small"><strong>Distanță pietonală:</strong> ${data.walking?.distanceText || "N/A"}</div>
+              <div class="small"><strong>Timp pietonal:</strong> ${data.walking?.durationText || "N/A"}</div>
+            `
+            : `<div class="small">Nu am găsit obiective relevante.</div>`
         }
+      `;
+    }
 
-        if (searchId !== currentSearchId) return;
+    function renderMap(data) {
+      clearMap();
 
-        if (nearestLocal) {
-          resBox.innerHTML = buildResultHtml({
-            origin,
-            nearest: nearestLocal,
-            threshold,
-            walking: walkingLocal,
-            allDistances: localDistances,
-            sourceLabel: "Local"
-          });
+      const origin = { lat: data.origin.lat, lng: data.origin.lng };
 
-          if (walkingLocal) {
-            drawWalkingRoute(walkingLocal);
+      map.setCenter(origin);
+      map.setZoom(17);
+
+      addressMarker = addColoredMarker(
+        origin,
+        "Adresă",
+        "https://maps.google.com/mapfiles/ms/icons/green-dot.png"
+      );
+
+      thresholdCircle = new google.maps.Circle({
+        map,
+        center: origin,
+        radius: Number(data.threshold),
+        strokeColor: "#1f2937",
+        strokeOpacity: 0.8,
+        strokeWeight: 2,
+        fillColor: "#93c5fd",
+        fillOpacity: 0.25,
+      });
+
+      if (data.nearest) {
+        nearestMarker = addColoredMarker(
+          { lat: data.nearest.lat, lng: data.nearest.lon },
+          data.nearest.name,
+          "https://maps.google.com/mapfiles/ms/icons/orange-dot.png"
+        );
+      }
+
+      if (Array.isArray(data.pointsUnderThreshold)) {
+        data.pointsUnderThreshold.forEach((p) => {
+          if (
+            data.nearest &&
+            p.name === data.nearest.name &&
+            p.lat === data.nearest.lat &&
+            p.lon === data.nearest.lon
+          ) {
+            return;
           }
-        } else {
-          resBox.innerHTML = `Nu am găsit local. Se încearcă OSM online...`;
-        }
 
-        let osmPoi = [];
-        try {
-          osmPoi = await fetchPoiFromOverpass(origin.lat, origin.lng, category, threshold);
-        } catch (e) {
-          osmPoi = [];
-        }
+          let color = "https://maps.google.com/mapfiles/ms/icons/red-dot.png";
+          if (p.type === "invatamant") {
+            color = "https://maps.google.com/mapfiles/ms/icons/blue-dot.png";
+          }
 
-        if (searchId !== currentSearchId) return;
-
-        const combined = dedupePoi([
-          ...localOnly,
-          ...filterByCategory(osmPoi, category)
-        ]);
-
-        if (!combined.length) {
-          resBox.innerHTML = `Nu am găsit obiective nici local, nici online.`;
-          return;
-        }
-
-        const combinedRendered = renderSearchResult(origin, combined, threshold, "Local + OSM");
-        const nearestCombined = combinedRendered?.nearest || null;
-        const combinedDistances = combinedRendered?.allDistances || [];
-
-        let walkingCombined = null;
-        if (nearestCombined) {
-          walkingCombined = await getWalkingRoute(
-            { lat: origin.lat, lng: origin.lng },
-            { lat: nearestCombined.lat, lng: nearestCombined.lng }
+          const marker = addColoredMarker(
+            { lat: p.lat, lng: p.lon },
+            p.name,
+            color
           );
-        }
 
-        if (searchId !== currentSearchId) return;
-
-        resBox.innerHTML = buildResultHtml({
-          origin,
-          nearest: nearestCombined,
-          threshold,
-          walking: walkingCombined,
-          allDistances: combinedDistances,
-          sourceLabel: "Local + OSM"
+          extraMarkers.push(marker);
         });
+      }
 
-        if (walkingCombined) {
-          drawWalkingRoute(walkingCombined);
-        }
-      } catch (error) {
-        document.getElementById("result").innerHTML = `<span class="bad">Eroare: ${error.message}</span>`;
+      if (data.walking && data.walking.polyline) {
+        const path = decodePolyline(data.walking.polyline);
+
+        walkingPolyline = new google.maps.Polyline({
+          path,
+          geodesic: true,
+          strokeColor: "#facc15",
+          strokeOpacity: 1,
+          strokeWeight: 5,
+          map,
+        });
       }
     }
 
-    async function initMap() {
-      map = new google.maps.Map(document.getElementById("map"), {
-        center: { lat: 44.4378, lng: 26.0969 },
-        zoom: 13,
-        mapTypeControl: true,
-        streetViewControl: true,
-        fullscreenControl: true
-      });
+    async function checkDistance() {
+      const address = document.getElementById("address").value.trim();
+      const category = document.getElementById("category").value;
+      const threshold = Number(document.getElementById("threshold").value);
+      const resultBox = document.getElementById("resultBox");
 
-      geocoder = new google.maps.Geocoder();
+      if (!address) {
+        resultBox.innerHTML = `<div class="error">Adresa este obligatorie.</div>`;
+        return;
+      }
 
-      await loadAllLocalPoi();
+      resultBox.innerHTML = `<div class="muted">Se caută...</div>`;
 
-      document.getElementById("checkBtn").addEventListener("click", go);
-      document.getElementById("streetBtn").addEventListener("click", toggleStreetView);
+      try {
+        const response = await fetch("/api/check-distance", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            address,
+            category,
+            threshold,
+          }),
+        });
 
-      document.getElementById("address").addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-          go();
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Eroare necunoscută.");
         }
-      });
+
+        renderResult(data);
+        renderMap(data);
+      } catch (err) {
+        resultBox.innerHTML = `<div class="error">Eroare: ${err.message}</div>`;
+      }
     }
 
-    window.initMap = initMap;
-  </script>
+    function toggleStreetView() {
+      if (!map || !panorama || !addressMarker) return;
 
-  <script
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDo1_eG0OO8G1hUP_NVj7XquWAfLX7pHAo&callback=initMap"
-    async
-    defer
-  ></script>
+      const visible = panorama.getVisible();
+
+      if (visible) {
+        panorama.setVisible(false);
+        return;
+      }
+
+      const position = addressMarker.getPosition();
+      panorama.setPosition(position);
+      panorama.setPov({ heading: 0, pitch: 0 });
+      panorama.setVisible(true);
+    }
+
+    async function bootstrap() {
+      try {
+        await loadConfig();
+        await loadGoogleMapsScript();
+        initMap();
+
+        document.getElementById("checkBtn").addEventListener("click", checkDistance);
+        document.getElementById("streetViewBtn").addEventListener("click", toggleStreetView);
+      } catch (e) {
+        document.getElementById("resultBox").innerHTML = `<div class="error">${e.message}</div>`;
+      }
+    }
+
+    bootstrap();
+  </script>
 </body>
 </html>
