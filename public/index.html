@@ -138,6 +138,20 @@
       line-height: 1.4;
     }
 
+    .section-title {
+      margin-top: 10px;
+      margin-bottom: 4px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #111827;
+    }
+
+    .separator {
+      height: 1px;
+      background: #e5e7eb;
+      margin: 10px 0;
+    }
+
     @media (max-width: 900px) {
       #app {
         flex-direction: column;
@@ -322,6 +336,23 @@
       return google.maps.geometry.encoding.decodePath(encoded);
     }
 
+    function formatPoiBlock(label, poi) {
+      if (!poi) {
+        return `
+          <div class="section-title">${label}</div>
+          <div class="small">Nu s-a găsit nimic.</div>
+        `;
+      }
+
+      return `
+        <div class="section-title">${label}</div>
+        <div class="small"><strong>Nume:</strong> ${poi.name}</div>
+        <div class="small"><strong>Categorie:</strong> ${poi.type}</div>
+        <div class="small"><strong>Sursă:</strong> ${poi.source || "local"}</div>
+        <div class="small"><strong>Distanță în linie dreaptă:</strong> ${Math.round(poi.distanceMeters)} m</div>
+      `;
+    }
+
     function renderResult(data) {
       const resultBox = document.getElementById("resultBox");
 
@@ -330,26 +361,64 @@
         return;
       }
 
+      const category = document.getElementById("category").value;
       const verdictClass = data.verdict === "SUB prag" ? "status-bad" : "status-ok";
 
-      resultBox.innerHTML = `
+      let html = `
         <div><strong>Verdict:</strong> <span class="${verdictClass}">${data.verdict}</span></div>
         <br>
         <div class="small"><strong>Adresă:</strong><br>${data.origin.formattedAddress || "-"}</div>
-        <br>
-        ${
-          data.nearest
-            ? `
-              <div class="small"><strong>Cel mai apropiat:</strong><br>${data.nearest.name}</div>
-              <div class="small"><strong>Categorie:</strong> ${data.nearest.type}</div>
-              <div class="small"><strong>Sursă:</strong> ${data.nearest.source || "local"}</div>
-              <div class="small"><strong>Distanță în linie dreaptă:</strong> ${Math.round(data.nearest.distanceMeters)} m</div>
-              <div class="small"><strong>Distanță pietonală:</strong> ${data.walking?.distanceText || "N/A"}</div>
-              <div class="small"><strong>Timp pietonal:</strong> ${data.walking?.durationText || "N/A"}</div>
-            `
-            : `<div class="small">Nu am găsit obiective relevante.</div>`
-        }
       `;
+
+      if (category === "ambele") {
+        html += `
+          <div class="separator"></div>
+          ${formatPoiBlock("Cea mai apropiată biserică", data.nearestChurch)}
+          <div class="separator"></div>
+          ${formatPoiBlock("Cea mai apropiată școală", data.nearestSchool)}
+          <div class="separator"></div>
+          ${formatPoiBlock("Cel mai apropiat obiectiv overall", data.nearest)}
+        `;
+
+        if (data.walking) {
+          html += `
+            <div class="separator"></div>
+            <div class="small"><strong>Rută pietonală către obiectivul overall:</strong></div>
+            <div class="small"><strong>Distanță pietonală:</strong> ${data.walking.distanceText || "N/A"}</div>
+            <div class="small"><strong>Timp pietonal:</strong> ${data.walking.durationText || "N/A"}</div>
+          `;
+        }
+      } else {
+        html += `
+          <div class="separator"></div>
+          ${
+            data.nearest
+              ? `
+                <div class="small"><strong>Cel mai apropiat:</strong><br>${data.nearest.name}</div>
+                <div class="small"><strong>Categorie:</strong> ${data.nearest.type}</div>
+                <div class="small"><strong>Sursă:</strong> ${data.nearest.source || "local"}</div>
+                <div class="small"><strong>Distanță în linie dreaptă:</strong> ${Math.round(data.nearest.distanceMeters)} m</div>
+                <div class="small"><strong>Distanță pietonală:</strong> ${data.walking?.distanceText || "N/A"}</div>
+                <div class="small"><strong>Timp pietonal:</strong> ${data.walking?.durationText || "N/A"}</div>
+              `
+              : `<div class="small">Nu am găsit obiective relevante.</div>`
+          }
+        `;
+      }
+
+      if (data.counts) {
+        html += `
+          <div class="separator"></div>
+          <div class="small"><strong>Statistici:</strong></div>
+          <div class="small">Local: ${data.counts.local ?? 0}</div>
+          <div class="small">Google: ${data.counts.google ?? 0}</div>
+          <div class="small">Total: ${data.counts.totalCombined ?? 0}</div>
+          <div class="small">Biserici: ${data.counts.churches ?? 0}</div>
+          <div class="small">Școli: ${data.counts.schools ?? 0}</div>
+        `;
+      }
+
+      resultBox.innerHTML = html;
     }
 
     function drawAddressMarker(origin) {
@@ -366,7 +435,6 @@
 
       addressMarker.addListener("dragend", async () => {
         const pos = addressMarker.getPosition();
-
         await checkDistanceByCoords(pos.lat(), pos.lng());
       });
     }
@@ -417,9 +485,14 @@
             return;
           }
 
-          let color = "http://maps.google.com/mapfiles/ms/icons/red-dot.png";
-          if (p.type === "invatamant") {
+          let color = "http://maps.google.com/mapfiles/ms/icons/darkblue-dot.png";
+
+          if (p.type === "lacase_cult") {
+            color = "http://maps.google.com/mapfiles/ms/icons/red-dot.png";
+          } else if (p.type === "invatamant") {
             color = "http://maps.google.com/mapfiles/ms/icons/blue-dot.png";
+          } else {
+            color = "http://maps.google.com/mapfiles/ms/icons/ltblue-dot.png";
           }
 
           const marker = addColoredMarker(
